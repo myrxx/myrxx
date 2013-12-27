@@ -24,13 +24,7 @@ module MyRxx
     end
 
     def to_hash
-      {}.tap do |hash|
-        attributes.each do |attrib|
-          unless (val = send(attrib)).blank?
-            hash[attrib] = val
-          end
-        end
-      end
+      {}.tap {|hash| attributes.each {|attrib| hash[attrib] = send(attrib) } }
     end
   
     def self._attributes
@@ -65,6 +59,10 @@ module MyRxx
   class ApiPersistentObject < ApiObject
     attributes :id
 
+    def self.save_method
+      "#{name.split('::').last.downcase}_update"
+    end
+
     def initialize(api, values = {})
       @api = api
       super(values)
@@ -72,6 +70,18 @@ module MyRxx
 
     def to_hash
       super.tap {|hash| hash.delete(:id) }
+    end
+
+    def save
+      begin
+        @api.send self.class.save_method, self
+      rescue OAuth2::Error => e
+        @errors = JSON.parse(e.response.body)['message'].split("\n")
+      end
+    end
+
+    def errors
+      @errors
     end
   end
 
@@ -87,10 +97,6 @@ module MyRxx
       super(values)
     end
 
-    def save
-      @api.patient_update self
-    end
-
     def prescribe
       @api.prescribe_patient self
     end
@@ -104,6 +110,7 @@ module MyRxx
     attributes :id, :instructions, :created_at, :workout
 
     def attributes=(values)
+      values = values.dup
       workout_hash = values.delete(:workout) || values.delete("workout")
       super(values)
       self.workout = Workout.new workout_hash if workout_hash
@@ -232,7 +239,7 @@ module MyRxx
     private
 
     def get(path, params = {})
-      @access_token.get(path, params: params)
+      @access_token.get(path, params: params) rescue nil
     end
 
     def post(path, params = {})

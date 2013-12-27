@@ -14,27 +14,27 @@ class MyrxxTest < ActiveSupport::TestCase
   end
 
   test "office to_hash" do
-    office_attributes = {name: 'office name'}
+    office_attributes = {id: nil, name: "office name", address: nil, address2: nil, city: nil, state: nil, zip_code: nil, share_patients: nil, application_code: nil}
     assert_equal office_attributes, MyRxx::Office.new(office_attributes).to_hash
   end
 
   test "provider to_hash" do
     prov = MyRxx::Provider.new(first_name: 'first', last_name: 'last', email: 'api.provider@example.com')
-    assert_equal({user_attributes: {first_name: 'first', last_name: 'last', email: 'api.provider@example.com'}}, prov.to_hash)
+    assert_equal({twitter: nil, facebook_name: nil, facebook_link: nil, prefix: nil, suffix: nil, accreditation: nil, user_attributes: {first_name: "first", last_name: "last", email: "api.provider@example.com"}}, prov.to_hash)
   end
 
   test "patient to_hash" do
-    patient_attributes = {first_name: 'first', last_name: 'last', email: 'api_patient@example.com'}
+    patient_attributes = {first_name: "first", last_name: "last", email: "api_patient@example.com", is_connected: nil, external_id: nil}
     assert_equal patient_attributes, MyRxx::Patient.new(nil, patient_attributes).to_hash
   end
 
   test "prescription to_hash" do
-    prescription_attributes = {instructions: 'instr'}
+    prescription_attributes = {workout: nil, id: nil, instructions: "instr", created_at: nil}
     assert_equal prescription_attributes, MyRxx::Prescription.new(prescription_attributes).to_hash
   end
 
   test "workout to_hash" do
-    workout_attributes = {difficulty: 3, time_to_complete: 75, body_area_names: ['upper', 'lower'], equipment_names: ['bench'], exercise_names: ['prisoner squat', 'bench press']}
+    workout_attributes = {id: nil, name: nil, difficulty: 3, time_to_complete: 75, body_area_names: ["upper", "lower"], category_names: nil, equipment_names: ["bench"], exercise_names: ["prisoner squat", "bench press"]}
     assert_equal workout_attributes, MyRxx::Workout.new(workout_attributes).to_hash
   end
 
@@ -72,11 +72,12 @@ class MyrxxTest < ActiveSupport::TestCase
 
   test "patient find by email" do
     pt = @myrxx.patients.first
-    assert_equal pt.id, @myrxx.patient(email: pt.email).id
+    assert_equal pt.email, @myrxx.patient(email: pt.email).email
   end
 
   test "patient_create" do
-    assert @myrxx.patients.first.save
+    pt = MyRxx::Patient.new(@myrxx, first_name: 'first', last_name: 'last', email: 'test@example.com')
+    assert pt.save
   end
 
   test "patient_update" do
@@ -89,5 +90,23 @@ class MyrxxTest < ActiveSupport::TestCase
 
   test "patient prescriptions" do
     assert @myrxx.patients.first.prescriptions.map(&:to_hash)
+  end
+
+  test "create patient with error" do
+    pt = MyRxx::Patient.new(@myrxx)
+    pt.save
+    assert pt.errors.is_a?(Array)
+    ["Last name can't be blank", "Email can't be blank"].each do |m|
+      assert pt.errors.include?(m)
+    end
+  end
+
+  test "update patient with error" do
+    pt = @myrxx.patients.first
+    pt.email = nil
+    pt.save
+    ["Email can't be blank"].each do |m|
+      assert pt.errors.include?(m)
+    end
   end
 end
